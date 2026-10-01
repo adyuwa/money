@@ -9,7 +9,7 @@
 // 🔧 Cloudflare Worker Proxy URL（部署後請修改此處）
 // 部署教學見 README.md
 // ─────────────────────────────────────────────
-const PROXY_BASE = 'my-worker.advertisement415182.workers.dev';
+const PROXY_BASE = 'https://my-worker.advertisement415182.workers.dev';
 
 // ─────────────────────────────────────────────
 // 工具函式
