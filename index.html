@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>台股智慧分析平台</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="logo" id="logoHome" style="cursor:pointer">📈 台股智慧分析平台</div>
+    <div class="search-bar">
+      <input type="text" id="stockInput" placeholder="輸入股票代碼，例如：2330" maxlength="6" />
+      <button id="searchBtn">分析</button>
+    </div>
+    <div class="hot-stocks">
+      熱門：
+      <span class="tag" data-code="2330">台積電 2330</span>
+      <span class="tag" data-code="2317">鴻海 2317</span>
+      <span class="tag" data-code="2454">聯發科 2454</span>
+      <span class="tag" data-code="2412">中華電 2412</span>
+      <span class="tag" data-code="0050">元大台灣50 0050</span>
+    </div>
+  </header>
+
+  <main id="mainContent">
+    <!-- 首頁儀表板（預設顯示）-->
+    <div id="homeDashboard">
+      <!-- 市場狀態列 -->
+      <div class="market-status-bar">
+        <div class="market-session" id="sessionBadge">
+          <span class="session-dot" id="sessionDot"></span>
+          <span id="sessionText">--</span>
+        </div>
+        <div class="market-clock" id="marketClock">--</div>
+        <div class="market-indices" id="marketIndices">
+          <span class="idx-item" id="taiexBadge">加權指數 載入中...</span>
+          <span class="idx-item" id="futuresBadge">期貨夜盤 --</span>
+        </div>
+      </div>
+
+      <!-- 盤後/夜盤即時行情 -->
+      <div class="home-futures-panel" id="futuresPanel">
+        <div class="panel-title">
+          <span id="futuresPanelTitle">🌙 夜盤即時行情</span>
+          <span class="refresh-hint" id="futuresRefreshHint"></span>
+        </div>
+        <div class="futures-grid" id="futuresGrid">
+          <div class="futures-loading">載入中...</div>
+        </div>
+      </div>
+
+      <!-- 我的持股 -->
+      <div class="home-portfolio-panel" id="portfolioPanel">
+        <div class="panel-title">
+          <span>💼 我的持股</span>
+          <span class="refresh-hint" id="portfolioRefreshHint"></span>
+          <div class="portfolio-add-bar">
+            <input id="portfolioInput" class="portfolio-input" type="text" placeholder="輸入代碼，例如 2330" maxlength="6" />
+            <button class="portfolio-add-btn" id="portfolioAddBtn">＋加入</button>
+          </div>
+        </div>
+        <div class="futures-grid" id="portfolioGrid"><div class="portfolio-empty">尚未加入任何持股，請輸入股票代碼後按「＋加入」</div></div>
+      </div>
+
+      <!-- 漲跌預測排行 -->
+      <div class="rank-days-bar">
+        <span class="rank-days-label">預測天數：</span>
+        <div class="rank-days-group" id="rankDaysGroup">
+          <button class="rank-day-btn" data-days="1">1日</button>
+          <button class="rank-day-btn" data-days="2">2日</button>
+          <button class="rank-day-btn" data-days="3">3日</button>
+          <button class="rank-day-btn" data-days="4">4日</button>
+          <button class="rank-day-btn active" data-days="5">5日</button>
+          <button class="rank-day-btn" data-days="6">6日</button>
+          <button class="rank-day-btn" data-days="7">7日</button>
+        </div>
+      </div>
+      <div class="home-rank-wrap">
+        <div class="rank-panel" id="rankUp">
+          <div class="rank-title up-title" id="rankUpTitle">📈 5日上漲機率 TOP 5</div>
+          <div class="rank-list" id="rankUpList"><div class="rank-loading">計算中...</div></div>
+        </div>
+        <div class="rank-panel" id="rankDown">
+          <div class="rank-title down-title" id="rankDownTitle">📉 5日下跌機率 TOP 5</div>
+          <div class="rank-list" id="rankDownList"><div class="rank-loading">計算中...</div></div>
+        </div>
+      </div>
+
+      <!-- 市場概況卡片 -->
+      <div class="home-overview-row">
+        <div class="overview-card" id="ovCard1">
+          <div class="ov-label">今日市場</div>
+          <div class="ov-val" id="ovMarket">--</div>
+        </div>
+        <div class="overview-card" id="ovCard2">
+          <div class="ov-label">成交量</div>
+          <div class="ov-val" id="ovVolume">--</div>
+        </div>
+        <div class="overview-card" id="ovCard3">
+          <div class="ov-label">漲家數</div>
+          <div class="ov-val up" id="ovUp">--</div>
+        </div>
+        <div class="overview-card" id="ovCard4">
+          <div class="ov-label">跌家數</div>
+          <div class="ov-val down" id="ovDown">--</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="loadingOverlay" class="hidden">
+    <div class="spinner"></div>
+    <p id="loadingText">資料載入中...</p>
+  </div>
+
+  <template id="dashboardTemplate">
+    <section class="stock-header">
+      <div class="stock-title">
+        <h1 id="stockName">--</h1>
+        <span id="stockCode" class="code-badge">----</span>
+        <span id="stockMarket" class="market-badge">--</span>
+      </div>
+      <div class="price-block">
+        <div class="current-price" id="currentPrice">--</div>
+        <div class="price-change" id="priceChange">-- (--)</div>
+        <div class="price-meta" id="updateTime">更新時間：--</div>
+      </div>
+    </section>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="overview">總覽</button>
+      <button class="tab" data-tab="technical">技術分析</button>
+      <button class="tab" data-tab="fundamental">基本面</button>
+      <button class="tab etf-tab hidden" data-tab="etf">ETF 成分股</button>
+      <button class="tab" data-tab="news">新聞情緒</button>
+      <button class="tab" data-tab="prediction">漲跌預測</button>
+    </div>
+
+    <div id="tab-overview" class="tab-content active">
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-title">成交量</div>
+          <div class="card-value" id="volume">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">今日開盤</div>
+          <div class="card-value" id="openPrice">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">今日最高</div>
+          <div class="card-value" id="highPrice">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">今日最低</div>
+          <div class="card-value" id="lowPrice">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">52週最高</div>
+          <div class="card-value" id="week52High">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">52週最低</div>
+          <div class="card-value" id="week52Low">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">本益比 (P/E)</div>
+          <div class="card-value" id="peRatio">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">股價淨值比 (P/B)</div>
+          <div class="card-value" id="pbRatio">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">市值</div>
+          <div class="card-value" id="marketCap">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">殖利率</div>
+          <div class="card-value" id="dividendYield">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">EPS</div>
+          <div class="card-value" id="eps">--</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Beta 值</div>
+          <div class="card-value" id="beta">--</div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-toolbar overview-toolbar">
+          <div class="toolbar-group" id="overviewSessionGroup">
+            <button class="period-btn active" data-session="day">☀️ 日盤走勢</button>
+            <button class="period-btn" data-session="history">📅 歷史走勢</button>
+          </div>
+          <div class="toolbar-sep"></div>
+          <div class="toolbar-group" id="overviewDayGroup" style="display:none">
+            <button class="day-btn active" data-days="1">今日</button>
+            <button class="day-btn" data-days="5">5日</button>
+            <button class="day-btn" data-days="20">1個月</button>
+            <button class="day-btn" data-days="60">3個月</button>
+          </div>
+        </div>
+        <div id="overviewChartTitle" class="chart-title" style="margin-top:8px">☀️ 今日盤中走勢</div>
+        <div id="overviewChart" style="height:320px"></div>
+      </div>
+    </div>
+
+    <div id="tab-technical" class="tab-content hidden">
+      <div class="chart-card">
+        <div class="chart-title">K線圖（含均線）</div>
+        <div class="chart-toolbar">
+          <button class="period-btn active" data-period="3m">3個月</button>
+          <button class="period-btn" data-period="6m">6個月</button>
+          <button class="period-btn" data-period="1y">1年</button>
+        </div>
+        <div id="candleChart" style="height:400px"></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card half">
+          <div class="chart-title">RSI (14)</div>
+          <div id="rsiChart" style="height:200px"></div>
+        </div>
+        <div class="chart-card half">
+          <div class="chart-title">MACD</div>
+          <div id="macdChart" style="height:200px"></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">成交量</div>
+        <div id="volumeChart" style="height:180px"></div>
+      </div>
+      <div class="tech-indicators">
+        <h3>技術指標摘要</h3>
+        <div class="indicator-grid" id="techSummary"></div>
+      </div>
+    </div>
+
+    <!-- ETF 成分股分頁（僅 ETF 顯示） -->
+    <div id="tab-etf" class="tab-content hidden">
+
+      <!-- 溢折價卡片 -->
+      <div class="etf-premium-card" id="etfPremiumCard">
+        <div class="etf-nav-row">
+          <div class="etf-nav-item">
+            <div class="etf-nav-label">ETF 市價</div>
+            <div class="etf-nav-val" id="etfMarketPrice">--</div>
+          </div>
+          <div class="etf-nav-sep">vs</div>
+          <div class="etf-nav-item">
+            <div class="etf-nav-label">估算 NAV</div>
+            <div class="etf-nav-val" id="etfNav">--</div>
+          </div>
+          <div class="etf-nav-sep">→</div>
+          <div class="etf-nav-item">
+            <div class="etf-nav-label">溢折價</div>
+            <div class="etf-nav-val etf-premium-val" id="etfPremium">--</div>
+          </div>
+        </div>
+        <div class="etf-premium-note" id="etfPremiumNote"></div>
+      </div>
+
+      <!-- 成分股即時表格 -->
+      <div class="chart-card">
+        <div class="etf-holdings-header">
+          <div class="chart-title" style="margin-bottom:0">📋 成分股即時行情</div>
+          <div class="etf-holdings-meta" id="etfHoldingsMeta"></div>
+        </div>
+        <div id="etfHoldingsTable" class="etf-holdings-table">
+          <div class="etf-loading">載入成分股資料中...</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-fundamental" class="tab-content hidden">
+      <div class="fund-grid">
+        <div class="fund-section">
+          <h3>📋 公司資訊</h3>
+          <div id="companyInfo" class="info-table"></div>
+        </div>
+        <div class="fund-section">
+          <h3>💰 財務指標</h3>
+          <div id="financialRatios" class="ratio-grid"></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">EPS 趨勢（近4季）</div>
+        <div id="epsChart" style="height:220px"></div>
+      </div>
+      <div class="fund-section">
+        <h3>📄 公司簡介</h3>
+        <p id="businessSummary" class="summary-text">載入中...</p>
+      </div>
+    </div>
+
+    <div id="tab-news" class="tab-content hidden">
+      <div class="news-sentiment">
+        <div class="sentiment-score-card">
+          <div class="sentiment-title">市場情緒指數</div>
+          <div id="sentimentGauge" style="height:200px"></div>
+          <div class="sentiment-label" id="sentimentLabel">--</div>
+        </div>
+        <div class="sentiment-breakdown" id="sentimentBreakdown"></div>
+      </div>
+
+      <div class="kol-section" id="kolSection" style="display:none">
+        <div class="kol-header">
+          <span class="kol-header-icon">🎯</span>
+          <span>指標人物觀點</span>
+          <span class="kol-header-sub">以下新聞涉及對市場有影響力的人物，括號內為歷史預測準確率</span>
+        </div>
+        <div id="kolList"></div>
+      </div>
+
+      <div class="news-section-title">📰 相關新聞</div>
+      <div class="news-list" id="newsList">
+        <div class="news-loading">載入新聞中...</div>
+      </div>
+    </div>
+
+    <div id="tab-prediction" class="tab-content hidden">
+      <div class="prediction-hero">
+        <div class="prediction-title" id="predictionTitle">未來5個工作日漲跌預測</div>
+        <div class="prediction-disclaimer">⚠️ 本預測僅供參考，不構成投資建議</div>
+        <!-- 天數選擇器 -->
+        <div class="pred-days-bar">
+          <span class="pred-days-label">預測天數：</span>
+          <div class="pred-days-group" id="predDaysGroup">
+            <button class="pred-day-btn" data-days="1">1日</button>
+            <button class="pred-day-btn" data-days="2">2日</button>
+            <button class="pred-day-btn" data-days="3">3日</button>
+            <button class="pred-day-btn" data-days="4">4日</button>
+            <button class="pred-day-btn active" data-days="5">5日</button>
+            <button class="pred-day-btn" data-days="6">6日</button>
+            <button class="pred-day-btn" data-days="7">7日</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 今日操作建議 -->
+      <div class="advice-card" id="adviceCard">
+        <div class="advice-icon" id="adviceIcon">⏳</div>
+        <div class="advice-body">
+          <div class="advice-label">今日操作建議（下個開盤日）</div>
+          <div class="advice-text" id="adviceText">計算中...</div>
+          <div class="advice-sub" id="adviceSub"></div>
+        </div>
+      </div>
+
+      <div class="prediction-main">
+        <div class="prob-display">
+          <div class="prob-up" id="probUp">
+            <div class="prob-icon">📈</div>
+            <div class="prob-value" id="upProb">--</div>
+            <div class="prob-label">上漲機率</div>
+          </div>
+          <div class="prob-vs">VS</div>
+          <div class="prob-down" id="probDown">
+            <div class="prob-icon">📉</div>
+            <div class="prob-value" id="downProb">--</div>
+            <div class="prob-label">下跌機率</div>
+          </div>
+        </div>
+        <div class="verdict-card" id="verdictCard">
+          <div class="verdict-title">綜合研判</div>
+          <div class="verdict-text" id="verdictText">--</div>
+        </div>
+      </div>
+      <div class="prediction-factors">
+        <h3>預測依據</h3>
+        <div id="factorList" class="factor-grid"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" id="predictionChartTitle">預測走勢示意圖（5個工作日）</div>
+        <div id="predictionChart" style="height:280px"></div>
+      </div>
+    </div>
+  </template>
+
+  <footer>
+    <p>資料來源：Yahoo Finance、TWSE、FinMind | 僅供參考，投資有風險</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
